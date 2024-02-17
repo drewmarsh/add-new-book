@@ -1,6 +1,34 @@
 # Initialize the loop condition
 $RunAgain = $true
 
+# Get the directory where the script file is located
+$ScriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+# Construct the path to the configuration file relative to the script directory
+$ConfigFileName = "config.json"
+$ConfigPath = Join-Path -Path $ScriptDirectory -ChildPath $ConfigFileName
+
+# Set default directory values
+$AudiobookDirectory = "C:\Audiobooks"
+$EbookDirectory = "C:\Ebooks"
+
+# Load configuration if available
+if (Test-Path -Path $ConfigPath) {
+    $Config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+    if ($Config.AudiobookDirectory) { $AudiobookDirectory = $Config.AudiobookDirectory }
+    if ($Config.EbookDirectory) { $EbookDirectory = $Config.EbookDirectory }
+}
+
+# Save configuration
+function Save-Configuration {
+    $Config = @{
+        AudiobookDirectory = $AudiobookDirectory
+        EbookDirectory = $EbookDirectory
+    } | ConvertTo-Json
+
+    $Config | Set-Content -Path $ConfigPath
+}
+
 function Validate-Input {
     param (
         [string]$Prompt
@@ -26,38 +54,30 @@ do {
     $BookTitle = Read-Host "Enter Book Title"
     $ReleaseYear = Read-Host "Enter Release Year"
 
-    # Initialize directory names
-    $AudiobookDirectoryName = ""
-    $EbookDirectoryName = ""
-
     # Set directory names based on user choices
     if ($CreateAudiobook) {
         # Ask user to enter a Narrator only if an audiobook directory is being created
         $Narrator = Read-Host "Enter Narrator"
     }
 
-    # Define the base directory where the folder structure for the new audiobook will be created
-    $AudiobookDirectory = "C:\Users\drew\Desktop\Audiobooks"
-
-    # Define the base directory where the folder structure for the new ebook will be created
-    $EbookDirectory = "C:\Users\drew\Desktop\Ebooks"
-
     # Verify audiobook directory
     if ($CreateAudiobook) {
         $AudiobookDirectoryCorrect = Validate-Input "Is this the correct location to store the audiobook in? $AudiobookDirectory (Y/N)"
         if (-not $AudiobookDirectoryCorrect) {
-            $AudiobookDirectory = Read-Host "Enter the desired directory for audiobooks:"
+            $AudiobookDirectory = Read-Host "Enter the desired directory for audiobooks"
         }
         $FolderPathAudiobook = Join-Path -Path $AudiobookDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)\$Narrator"
+        Save-Configuration
     }
 
     # Verify ebook directory
     if ($CreateEbook) {
         $EbookDirectoryCorrect = Validate-Input "Is this the correct base location to store the ebook in? $EbookDirectory (Y/N)"
         if (-not $EbookDirectoryCorrect) {
-            $EbookDirectory = Read-Host "Enter the desired directory for ebooks:"
+            $EbookDirectory = Read-Host "Enter the desired directory for ebooks"
         }
         $FolderPathEbook = Join-Path -Path $EbookDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)"
+        Save-Configuration
     }
 
     # Check if both audiobook and ebook directories are being created in the same location
