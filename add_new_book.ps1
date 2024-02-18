@@ -54,6 +54,11 @@ do {
     $BookTitle = Read-Host "Enter Book Title"
     $ReleaseYear = Read-Host "Enter Release Year"
 
+    # Prompt the user to enter Narrator if creating an audiobook directory
+    if ($CreateAudiobook) {
+        $Narrator = Read-Host "Enter Narrator"
+    }
+
     # Set directory names based on user choices
     if ($CreateAudiobook) {
         if (-not (Test-Path -Path $ConfigPath) -or -not $AudiobookDirectory) {
@@ -64,7 +69,7 @@ do {
                 $AudiobookDirectory = Read-Host "Enter the desired directory for audiobooks"
             }
         }
-        $FolderPathAudiobook = Join-Path -Path $AudiobookDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)"
+        $FolderPathAudiobook = Join-Path -Path $AudiobookDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)\$Narrator"
     }
     
     if ($CreateEbook) {
@@ -88,15 +93,14 @@ do {
         exit
     }
 
-    # Check if the folder(s) already exist, and if not, create them
     if ($CreateAudiobook -and -not (Test-Path -Path $FolderPathAudiobook)) {
-        New-Item -Path $FolderPathAudiobook -ItemType Directory -Force
-        Write-Host "Audiobook folder structure created:"
+        New-Item -Path $FolderPathAudiobook -ItemType Directory -Force | Out-Null
+        Write-Host "Audiobook folder structure created."
     }
-
+    
     if ($CreateEbook -and -not (Test-Path -Path $FolderPathEbook)) {
-        New-Item -Path $FolderPathEbook -ItemType Directory -Force
-        Write-Host "Ebook folder structure created:"
+        New-Item -Path $FolderPathEbook -ItemType Directory -Force | Out-Null
+        Write-Host "Ebook folder structure created."
     }
 
     # Ask the user if they want to run the script again
