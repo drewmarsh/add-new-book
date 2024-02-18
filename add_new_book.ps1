@@ -44,6 +44,11 @@ do {
     $CreateAudiobook = Confirm-UserChoice "Create an audiobook directory? (Y/N)"
     $CreateEbook = Confirm-UserChoice "Create an ebook directory? (Y/N)"
 
+    # Exit program when the user chooses no for creating either directory
+    if (-not ($CreateAudiobook -or $CreateEbook)) {
+        exit
+    }
+
     # Prompt the user for Author, Book Title, and Release Year
     $Author = Read-Host "Enter Author"
     $BookTitle = Read-Host "Enter Book Title"
@@ -51,7 +56,7 @@ do {
 
     # Set directory names based on user choices
     if ($CreateAudiobook) {
-        if (-not (Test-Path -Path $ConfigPath)) {
+        if (-not (Test-Path -Path $ConfigPath) -or -not $AudiobookDirectory) {
             $AudiobookDirectory = Read-Host "Enter the desired directory for audiobooks"
         } else {
             $AudiobookDirectoryCorrect = Confirm-UserChoice "Is this the correct location to store the audiobook in? $AudiobookDirectory (Y/N)"
@@ -61,9 +66,9 @@ do {
         }
         $FolderPathAudiobook = Join-Path -Path $AudiobookDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)"
     }
-
+    
     if ($CreateEbook) {
-        if (-not (Test-Path -Path $ConfigPath)) {
+        if (-not (Test-Path -Path $ConfigPath) -or -not $EbookDirectory) {
             $EbookDirectory = Read-Host "Enter the desired directory for ebooks"
         } else {
             $EbookDirectoryCorrect = Confirm-UserChoice "Is this the correct base location to store the ebook in? $EbookDirectory (Y/N)"
