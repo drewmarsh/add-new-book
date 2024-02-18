@@ -103,6 +103,54 @@ do {
         Write-Host "Ebook folder structure created."
     }
 
+    # Prompt the user and ask if they want to add any files to the newly created audiobook directory
+    if ($CreateAudiobook) {
+        $AddAudiobookFiles = Confirm-UserChoice "Would you like to add any files to the newly created audiobook directory? (Y/N)"
+        if ($AddAudiobookFiles) {
+            if (-not (Test-Path -Path $FolderPathAudiobook)) { Write-Host "Audiobook directory ($FolderPathAudiobook) not found." }
+            do {
+                # Ask the user for the destination of the file they want to move
+                $FileDestination = Read-Host "Enter the path of the file you want to move"
+                if (-not (Test-Path -Path $FileDestination -PathType Leaf)) {
+                    Write-Host "Error: The specified file path '$FileDestination' does not exist."
+                } else {
+                    try {
+                        Move-Item -Path $FileDestination -Destination $FolderPathAudiobook -Force
+                        Write-Host "File moved successfully."
+                    } catch {
+                        Write-Host "Error: $_"
+                    }
+                }
+                # Ask if the user wants to add more files
+                $AddMoreFiles = Confirm-UserChoice "Do you want to add more files? (Y/N)"
+            } while ($AddMoreFiles)
+        }
+    }
+
+    # Prompt the user and ask if they want to add any files to the newly created ebook directory
+    if ($CreateEbook) {
+        $AddEbookFiles = Confirm-UserChoice "Would you like to add any files to the newly created ebook directory? (Y/N)"
+        if ($AddEbookFiles) {
+            if (-not (Test-Path -Path $FolderPathEbook)) { Write-Host "Ebook directory ($FolderPathEbook) not found." }
+            do {
+                # Ask the user for the destination of the file they want to move
+                $FileDestination = Read-Host "Enter the path of the file you want to move"
+                if (-not (Test-Path -Path $FileDestination -PathType Leaf)) {
+                    Write-Host "Error: The specified file path '$FileDestination' does not exist."
+                } else {
+                    try {
+                        Move-Item -Path $FileDestination -Destination $FolderPathEbook -Force
+                        Write-Host "File moved successfully."
+                    } catch {
+                        Write-Host "Error: $_"
+                    }
+                }
+                # Ask if the user wants to add more files
+                $AddMoreFiles = Confirm-UserChoice "Do you want to add more files? (Y/N)"
+            } while ($AddMoreFiles)
+        }
+    }
+
     # Ask the user if they want to run the script again
     $RunAgain = Confirm-UserChoice "Do you want to run this script again? (Y/N)"
 
