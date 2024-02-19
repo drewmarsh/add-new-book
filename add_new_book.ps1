@@ -48,27 +48,27 @@ function Get-DirectoryPath {
         [string]$Narrator
     )
 
-    $directoryVariableName = "${Type}Directory"
-    $folderPathVariableName = "FolderPath${Type}"
-    $type = Format-Directory -DirectoryPath "$type"
+    $DirectoryVariableName = "${Type}Directory"
+    $FolderPathVariableName = "FolderPath${Type}"
+    $FormattedType = Format-Directory -DirectoryPath "$type"
 
     if (-not (Test-Path -Path $ConfigPath) -or -not $CurrentDirectory) {
         do {
-            $CurrentDirectory = Read-Host "Enter the desired directory for $Type"
+            $CurrentDirectory = Read-Host "Enter the desired directory for $FormattedType"
             $CurrentDirectory = Remove-QuotesFromDirectoryPath -DirectoryPath $CurrentDirectory
         } while (-not (Test-Path -Path $CurrentDirectory))
     } else {
         $HighlightedDirectory = Format-Directory -DirectoryPath $CurrentDirectory
-        $DirectoryCorrect = Confirm-UserChoice ("Is this the correct location to store the $Type in? $HighlightedDirectory" + (Write-ChoicePrompt))
+        $DirectoryCorrect = Confirm-UserChoice ("Is this the correct location to store the $FormattedType in? $HighlightedDirectory" + (Write-ChoicePrompt))
         if (-not $DirectoryCorrect) {
             do {
-                $CurrentDirectory = Read-Host "Enter the desired directory for the $Type"
+                $CurrentDirectory = Read-Host "Enter the desired directory for the $FormattedType"
                 $CurrentDirectory = Remove-QuotesFromDirectoryPath -DirectoryPath $CurrentDirectory
             } while (-not (Test-Path -Path $CurrentDirectory))
         }
     }
 
-    Set-Variable -Name $directoryVariableName -Value $CurrentDirectory -Scope Script
+    Set-Variable -Name $DirectoryVariableName -Value $CurrentDirectory -Scope Script
 
     if ($Type -eq "Audiobook" -and $Narrator) {
         $CurrentDirectory = Join-Path -Path $CurrentDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)"
@@ -77,7 +77,7 @@ function Get-DirectoryPath {
         $CurrentDirectory = Join-Path -Path $CurrentDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)"
     }
 
-    Set-Variable -Name $folderPathVariableName -Value $CurrentDirectory -Scope Script
+    Set-Variable -Name $FolderPathVariableName -Value $CurrentDirectory -Scope Script
 }
 
 function Remove-QuotesFromDirectoryPath {
