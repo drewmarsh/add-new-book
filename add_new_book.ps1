@@ -29,6 +29,7 @@ function Save-Configuration {
     $Config | Set-Content -Path $ConfigPath
 }
 
+# Prompts the user with a yes/no question and validates the input
 function Confirm-UserChoice {
     param (
         [string]$Prompt
@@ -37,6 +38,34 @@ function Confirm-UserChoice {
         $userChoice = Read-Host $Prompt
     } while ($userChoice -notmatch '^[YNyn]$')
     return $userChoice -imatch '[Yy]'
+}
+
+# Moves files to the specified directory after obtaining user confirmation
+function MoveFilesToDirectory {
+    param (
+        [string]$FolderPath
+    )
+
+    $MoveFiles = Confirm-UserChoice "Do you want to move any files to this newly created directory? $FolderPath (Y/N)"
+    if ($MoveFiles) {
+        if (-not (Test-Path -Path $FolderPath)) { Write-Host "Directory ($FolderPath) not found." }
+        do {
+            # Ask the user for the destination of the file that they want to move
+            $FileDestination = Read-Host "Enter the path of the file you want to move"
+            if (-not (Test-Path -Path $FileDestination -PathType Leaf)) {
+                Write-Host "Error: The specified file path '$FileDestination' does not exist."
+            } else {
+                try {
+                    Move-Item -Path $FileDestination -Destination $FolderPath -Force
+                    Write-Host "File moved successfully."
+                } catch {
+                    Write-Host "Error: $_"
+                }
+            }
+            # Ask if the user wants to move more files
+            $MoveMoreFiles = Confirm-UserChoice "Do you want to move more files? (Y/N)"
+        } while ($MoveMoreFiles)
+    }
 }
 
 do {
@@ -86,34 +115,6 @@ do {
 
     # Save configuration after both directories have been verified
     Save-Configuration
-
-    function AddFilesToDirectory {
-        param (
-            [string]$FolderPath
-        )
-    
-        $AddFiles = Confirm-UserChoice "Do you want to move any files to this newly created directory? $FolderPath (Y/N)"
-        if ($AddFiles) {
-            if (-not (Test-Path -Path $FolderPath)) { Write-Host "Directory ($FolderPath) not found." }
-            do {
-                # Ask the user for the destination of the file that they want to move
-                $FileDestination = Read-Host "Enter the path of the file you want to move"
-                if (-not (Test-Path -Path $FileDestination -PathType Leaf)) {
-                    Write-Host "Error: The specified file path '$FileDestination' does not exist."
-                } else {
-                    try {
-                        Move-Item -Path $FileDestination -Destination $FolderPath -Force
-                        Write-Host "File moved successfully."
-                    } catch {
-                        Write-Host "Error: $_"
-                    }
-                }
-                # Ask if the user wants to add more files
-                $AddMoreFiles = Confirm-UserChoice "Do you want to add more files? (Y/N)"
-            } while ($AddMoreFiles)
-        }
-    }
-
     # Check if both audiobook and ebook directories are being created in the same location
     if ($CreateAudiobook -and $CreateEbook -and $AudiobookDirectory -eq $EbookDirectory) {
         Write-Host "Both audiobook and ebook directories cannot be created in the same location. Script exiting."
@@ -123,13 +124,13 @@ do {
     if ($CreateAudiobook -and -not (Test-Path -Path $FolderPathAudiobook)) {
         New-Item -Path $FolderPathAudiobook -ItemType Directory -Force | Out-Null
         Write-Host "Audiobook folder structure created."
-        AddFilesToDirectory -FolderPath $FolderPathAudiobook
+        MoveFilesToDirectory -FolderPath $FolderPathAudiobook
     }
     
     if ($CreateEbook -and -not (Test-Path -Path $FolderPathEbook)) {
         New-Item -Path $FolderPathEbook -ItemType Directory -Force | Out-Null
         Write-Host "Ebook folder structure created."
-        AddFilesToDirectory -FolderPath $FolderPathEbook
+        MoveFilesToDirectory -FolderPath $FolderPathEbook
     }
 
     # Ask the user if they want to run the script again
