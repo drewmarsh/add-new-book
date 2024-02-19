@@ -50,6 +50,7 @@ function Get-DirectoryPath {
 
     $directoryVariableName = "${Type}Directory"
     $folderPathVariableName = "FolderPath${Type}"
+    $type = Format-Directory -DirectoryPath "$type"
 
     if (-not (Test-Path -Path $ConfigPath) -or -not $CurrentDirectory) {
         do {
@@ -65,7 +66,6 @@ function Get-DirectoryPath {
                 $CurrentDirectory = Remove-QuotesFromDirectoryPath -DirectoryPath $CurrentDirectory
             } while (-not (Test-Path -Path $CurrentDirectory))
         }
-        Write-Host
     }
 
     Set-Variable -Name $directoryVariableName -Value $CurrentDirectory -Scope Script
@@ -97,8 +97,9 @@ function MoveFilesToDirectory {
         [string]$FolderPath
     )
 
+    Write-Host
     $HighlightedDirectory = Format-Directory -DirectoryPath $FolderPath
-    $MoveFiles = Confirm-UserChoice ("Do you want to move any files to this newly created directory? $HighlightedDirectory" + (Write-ChoicePrompt))
+    $MoveFiles = Confirm-UserChoice ("Do you want to move any files into this newly created directory? $HighlightedDirectory" + (Write-ChoicePrompt))
     if ($MoveFiles) {
         if (-not (Test-Path -Path $FolderPath)) { Write-Host "Directory ($FolderPath) not found." }
         
@@ -123,7 +124,7 @@ function MoveFilesToDirectory {
         
             # Ask if the user wants to move more files
             Write-Host
-            $MoveMoreFiles = Confirm-UserChoice ("Do you want to move another file?" + (Write-ChoicePrompt))
+            $MoveMoreFiles = Confirm-UserChoice ("Do you want to move another file into this directory? $HighlightedDirectory" + (Write-ChoicePrompt))
         } while ($MoveMoreFiles)
     }
 }
@@ -170,14 +171,12 @@ function Write-ChoicePrompt {
 
 do {
     # Prompt the user for input with input validation
-    $CreateAudiobook = Confirm-UserChoice ("Create an Audiobook directory?" + (Write-ChoicePrompt))
-    $CreateEbook = Confirm-UserChoice ("Create an Ebook directory?" + (Write-ChoicePrompt))
+    $CreateAudiobook = Confirm-UserChoice "Create an $(Format-Directory -DirectoryPath 'Audiobook') directory?$(Write-ChoicePrompt)"
+    $CreateEbook = Confirm-UserChoice "Create an $(Format-Directory -DirectoryPath 'Ebook') directory?$(Write-ChoicePrompt)"
     Write-Host
 
     # Exit program when the user chooses no for creating either directory
-    if (-not ($CreateAudiobook -or $CreateEbook)) {
-        exit
-    }
+    if (-not ($CreateAudiobook -or $CreateEbook)) { exit }
 
     # Prompt the user for Author, Book Title, and Release Year
     $Author = Read-Host "Enter Author"
