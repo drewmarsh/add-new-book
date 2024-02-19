@@ -54,16 +54,18 @@ function Get-DirectoryPath {
     if (-not (Test-Path -Path $ConfigPath) -or -not $CurrentDirectory) {
         do {
             $CurrentDirectory = Read-Host "Enter the desired directory for $Type"
-            $CurrentDirectory = Clean-DirectoryPathFromQuotes -DirectoryPath $CurrentDirectory
+            $CurrentDirectory = Remove-QuotesFromDirectoryPath -DirectoryPath $CurrentDirectory
         } while (-not (Test-Path -Path $CurrentDirectory))
     } else {
-        $DirectoryCorrect = Confirm-UserChoice "Is this the correct location to store the $Type in? $CurrentDirectory (Y/N)"
+        $HighlightedDirectory = Format-Directory -DirectoryPath $CurrentDirectory
+        $DirectoryCorrect = Confirm-UserChoice ("Is this the correct location to store the $Type in? $HighlightedDirectory" + (Write-ChoicePrompt))
         if (-not $DirectoryCorrect) {
             do {
-                $CurrentDirectory = Read-Host "Enter the desired directory for $Type"
-                $CurrentDirectory = Clean-DirectoryPathFromQuotes -DirectoryPath $CurrentDirectory
+                $CurrentDirectory = Read-Host "Enter the desired directory for the $Type"
+                $CurrentDirectory = Remove-QuotesFromDirectoryPath -DirectoryPath $CurrentDirectory
             } while (-not (Test-Path -Path $CurrentDirectory))
         }
+        Write-Host
     }
 
     Set-Variable -Name $directoryVariableName -Value $CurrentDirectory -Scope Script
@@ -78,7 +80,7 @@ function Get-DirectoryPath {
     Set-Variable -Name $folderPathVariableName -Value $CurrentDirectory -Scope Script
 }
 
-function Clean-DirectoryPathFromQuotes {
+function Remove-QuotesFromDirectoryPath {
     param (
         [string]$DirectoryPath
     )
@@ -95,42 +97,82 @@ function MoveFilesToDirectory {
         [string]$FolderPath
     )
 
-    $MoveFiles = Confirm-UserChoice "Do you want to move any files to this newly created directory? $FolderPath (Y/N)"
+    $HighlightedDirectory = Format-Directory -DirectoryPath $FolderPath
+    $MoveFiles = Confirm-UserChoice ("Do you want to move any files to this newly created directory? $HighlightedDirectory" + (Write-ChoicePrompt))
     if ($MoveFiles) {
         if (-not (Test-Path -Path $FolderPath)) { Write-Host "Directory ($FolderPath) not found." }
         
         do {
             # Ask the user for the destination of the file that they want to move
-            $FileDestination = Read-Host "Enter the path of the file you want to move"
-            $FileDestination = Clean-DirectoryPathFromQuotes -DirectoryPath $FileDestination
-            
+            Write-Host
+            $FileDestination = Read-Host "`tEnter the path of the file you want to move"
+            $FileDestination = Remove-QuotesFromDirectoryPath -DirectoryPath $FileDestination
+            Write-Host "`t" -NoNewline
+        
             if (-not (Test-Path -Path $FileDestination -PathType Leaf)) {
-                Write-Host "Error: The specified file path '$FileDestination' does not exist."
+                # Handle the case where the specified file path does not exist
+                Format-Error -ErrorMessage "Error: The specified file path '$FileDestination' does not exist." | Write-Host
             } else {
                 try {
                     Move-Item -Path $FileDestination -Destination $FolderPath -Force
-                    Write-Host "File moved successfully."
+                    Format-Success -SuccessMessage "File moved successfully." | Write-Host
                 } catch {
-                    Write-Host "Error: $_"
-                    $FileDestination = Clean-DirectoryPathFromQuotes -DirectoryPath $FileDestination
-                    try {
-                        Move-Item -Path $FileDestination -Destination $FolderPath -Force
-                        Write-Host "File moved successfully after removing quotes."
-                    } catch {
-                        Write-Host "Error: $_"
-                    }
+                    Format-Error -ErrorMessage "Error: $_" | Write-Host
                 }
             }
+        
             # Ask if the user wants to move more files
-            $MoveMoreFiles = Confirm-UserChoice "Do you want to move more files? (Y/N)"
+            Write-Host
+            $MoveMoreFiles = Confirm-UserChoice ("Do you want to move another file?" + (Write-ChoicePrompt))
         } while ($MoveMoreFiles)
     }
 }
 
+# Producing colored text
+$Colors = @{
+    'Reset' = [char]27 + '[0m'
+    'Red' = [char]27 + '[31m'
+    'Green' = [char]27 + '[32m'
+    'Yellow' = [char]27 + '[33m'
+}
+
+function Format-Color {
+    param ([string]$Message, [string]$Color)
+
+    $Reset = $Colors['Reset']
+    return "$Color$Message$Reset"
+}
+
+function Format-Success {
+    param ([string]$SuccessMessage)
+
+    return Format-Color -Message $SuccessMessage -Color $Colors['Green']
+}
+
+function Format-Error {
+    param ([string]$ErrorMessage)
+
+    return Format-Color -Message $ErrorMessage -Color $Colors['Red']
+}
+
+function Format-Directory {
+    param ([string]$DirectoryPath)
+
+    return Format-Color -Message "$DirectoryPath" -Color $Colors['Yellow']
+}
+
+function Write-ChoicePrompt {
+    $Reset = $Colors['Reset']
+    $Green = $Colors['Green']
+    $Red = $Colors['Red']
+    Write-Output " (${Green}Y${Reset}/${Red}N${Reset})"
+}
+
 do {
     # Prompt the user for input with input validation
-    $CreateAudiobook = Confirm-UserChoice "Create an audiobook directory? (Y/N)"
-    $CreateEbook = Confirm-UserChoice "Create an ebook directory? (Y/N)"
+    $CreateAudiobook = Confirm-UserChoice ("Create an Audiobook directory?" + (Write-ChoicePrompt))
+    $CreateEbook = Confirm-UserChoice ("Create an Ebook directory?" + (Write-ChoicePrompt))
+    Write-Host
 
     # Exit program when the user chooses no for creating either directory
     if (-not ($CreateAudiobook -or $CreateEbook)) {
@@ -146,6 +188,7 @@ do {
     if ($CreateAudiobook) {
         $Narrator = Read-Host "Enter Narrator"
     }
+    Write-Host
 
     # Create directories based on user choices
     if ($CreateAudiobook) {
@@ -159,23 +202,22 @@ do {
     Save-Configuration
     # Check if both audiobook and ebook directories are being created in the same location
     if ($CreateAudiobook -and $CreateEbook -and $AudiobookDirectory -eq $EbookDirectory) {
-        Write-Host "Both audiobook and ebook directories cannot be created in the same location. Script exiting."
+        Write-Host "`tError: Both Audiobook and Ebook directories cannot be created in the same location. Script exiting."
         exit
     }
 
     if ($CreateAudiobook -and -not (Test-Path -Path $FolderPathAudiobook)) {
         New-Item -Path $FolderPathAudiobook -ItemType Directory -Force | Out-Null
-        Write-Host "Audiobook folder structure created."
         MoveFilesToDirectory -FolderPath $FolderPathAudiobook
     }
     
     if ($CreateEbook -and -not (Test-Path -Path $FolderPathEbook)) {
         New-Item -Path $FolderPathEbook -ItemType Directory -Force | Out-Null
-        Write-Host "Ebook folder structure created."
         MoveFilesToDirectory -FolderPath $FolderPathEbook
     }
 
     # Ask the user if they want to run the script again
-    $RunAgain = Confirm-UserChoice "Do you want to run this script again? (Y/N)"
+    Write-Host
+    $RunAgain = Confirm-UserChoice ("Do you want to run this script again?" + (Write-ChoicePrompt))
 
 } while ($RunAgain)
