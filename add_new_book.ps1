@@ -123,7 +123,7 @@ function MoveFilesToDirectory {
             }
         
             # Ask if the user wants to move more files
-            Write-Host
+            Write-Host "`n`t" -NoNewline
             $MoveMoreFiles = Confirm-UserChoice ("Do you want to move another file into this directory? $HighlightedDirectory" + (Write-ChoicePrompt))
         } while ($MoveMoreFiles)
     }
