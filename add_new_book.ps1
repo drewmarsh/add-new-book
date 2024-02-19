@@ -40,6 +40,55 @@ function Confirm-UserChoice {
     return $userChoice -imatch '[Yy]'
 }
 
+function Get-DirectoryPath {
+    param (
+        [string]$Type,
+        [string]$ConfigPath,
+        [string]$CurrentDirectory,
+        [string]$Narrator
+    )
+
+    $directoryVariableName = "${Type}Directory"
+    $folderPathVariableName = "FolderPath${Type}"
+
+    if (-not (Test-Path -Path $ConfigPath) -or -not $CurrentDirectory) {
+        do {
+            $CurrentDirectory = Read-Host "Enter the desired directory for $Type"
+            $CurrentDirectory = Clean-DirectoryPathFromQuotes -DirectoryPath $CurrentDirectory
+        } while (-not (Test-Path -Path $CurrentDirectory))
+    } else {
+        $DirectoryCorrect = Confirm-UserChoice "Is this the correct location to store the $Type in? $CurrentDirectory (Y/N)"
+        if (-not $DirectoryCorrect) {
+            do {
+                $CurrentDirectory = Read-Host "Enter the desired directory for $Type"
+                $CurrentDirectory = Clean-DirectoryPathFromQuotes -DirectoryPath $CurrentDirectory
+            } while (-not (Test-Path -Path $CurrentDirectory))
+        }
+    }
+
+    Set-Variable -Name $directoryVariableName -Value $CurrentDirectory -Scope Script
+
+    if ($Type -eq "Audiobook" -and $Narrator) {
+        $CurrentDirectory = Join-Path -Path $CurrentDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)"
+        $CurrentDirectory = Join-Path -Path $CurrentDirectory -ChildPath $Narrator
+    } else {
+        $CurrentDirectory = Join-Path -Path $CurrentDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)"
+    }
+
+    Set-Variable -Name $folderPathVariableName -Value $CurrentDirectory -Scope Script
+}
+
+function Clean-DirectoryPathFromQuotes {
+    param (
+        [string]$DirectoryPath
+    )
+
+    # Remove quotation marks from the directory path
+    $CleanedPath = $DirectoryPath -replace '"', ''
+    
+    return $CleanedPath
+}
+
 # Moves files to the specified directory after obtaining user confirmation
 function MoveFilesToDirectory {
     param (
@@ -49,9 +98,12 @@ function MoveFilesToDirectory {
     $MoveFiles = Confirm-UserChoice "Do you want to move any files to this newly created directory? $FolderPath (Y/N)"
     if ($MoveFiles) {
         if (-not (Test-Path -Path $FolderPath)) { Write-Host "Directory ($FolderPath) not found." }
+        
         do {
             # Ask the user for the destination of the file that they want to move
             $FileDestination = Read-Host "Enter the path of the file you want to move"
+            $FileDestination = Clean-DirectoryPathFromQuotes -DirectoryPath $FileDestination
+            
             if (-not (Test-Path -Path $FileDestination -PathType Leaf)) {
                 Write-Host "Error: The specified file path '$FileDestination' does not exist."
             } else {
@@ -60,6 +112,13 @@ function MoveFilesToDirectory {
                     Write-Host "File moved successfully."
                 } catch {
                     Write-Host "Error: $_"
+                    $FileDestination = Clean-DirectoryPathFromQuotes -DirectoryPath $FileDestination
+                    try {
+                        Move-Item -Path $FileDestination -Destination $FolderPath -Force
+                        Write-Host "File moved successfully after removing quotes."
+                    } catch {
+                        Write-Host "Error: $_"
+                    }
                 }
             }
             # Ask if the user wants to move more files
@@ -88,31 +147,14 @@ do {
         $Narrator = Read-Host "Enter Narrator"
     }
 
-    # Set directory names based on user choices
+    # Create directories based on user choices
     if ($CreateAudiobook) {
-        if (-not (Test-Path -Path $ConfigPath) -or -not $AudiobookDirectory) {
-            $AudiobookDirectory = Read-Host "Enter the desired directory for audiobooks"
-        } else {
-            $AudiobookDirectoryCorrect = Confirm-UserChoice "Is this the correct location to store the audiobook in? $AudiobookDirectory (Y/N)"
-            if (-not $AudiobookDirectoryCorrect) {
-                $AudiobookDirectory = Read-Host "Enter the desired directory for audiobooks"
-            }
-        }
-        $FolderPathAudiobook = Join-Path -Path $AudiobookDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)\$Narrator"
+        Get-DirectoryPath -Type "Audiobook" -ConfigPath $ConfigPath -CurrentDirectory $AudiobookDirectory -Narrator $Narrator
     }
     
     if ($CreateEbook) {
-        if (-not (Test-Path -Path $ConfigPath) -or -not $EbookDirectory) {
-            $EbookDirectory = Read-Host "Enter the desired directory for ebooks"
-        } else {
-            $EbookDirectoryCorrect = Confirm-UserChoice "Is this the correct base location to store the ebook in? $EbookDirectory (Y/N)"
-            if (-not $EbookDirectoryCorrect) {
-                $EbookDirectory = Read-Host "Enter the desired directory for ebooks"
-            }
-        }
-        $FolderPathEbook = Join-Path -Path $EbookDirectory -ChildPath "$Author\$BookTitle ($ReleaseYear)"
+        Get-DirectoryPath -Type "Ebook" -ConfigPath $ConfigPath -CurrentDirectory $EbookDirectory
     }
-
     # Save configuration after both directories have been verified
     Save-Configuration
     # Check if both audiobook and ebook directories are being created in the same location
